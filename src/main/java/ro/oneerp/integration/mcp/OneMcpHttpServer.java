@@ -20,6 +20,15 @@ public class OneMcpHttpServer {
 
     public void start() {
         this.server.start();
-        System.out.println("HTTP server started");
+        System.out.println("MCP: HTTP server STARTED.");
+    }
+
+    public void stop(int delaySeconds) {
+        this.server.stop(delaySeconds);
+        System.out.println("MCP: HTTP server STOPPED.");
+    }
+
+    public int getMcpServerPort () {
+        return this.server.getAddress().getPort();
     }
 }
