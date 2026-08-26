@@ -6,6 +6,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,6 +43,7 @@ public class OneMcpHttpServerTest {
         // Arrange
         HttpRequest req = HttpRequest.newBuilder()
                 .uri(this.mcpUri)
+                .header("Content-Type", "application/json")
                 .GET()
                 .build();
 
@@ -60,10 +62,181 @@ public class OneMcpHttpServerTest {
     }
 
     @Test
+    void mcpRejectsRequestWithWrongMcpProtocolVersionHeader() throws Exception {
+        // Arrange
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(mcpUri)
+                .header("Content-Type", "application/json")
+                .header("Accept", "application/json, text/event-stream")
+                .header("MCP-Protocol-Version", "2025-11-25")
+                .POST(HttpRequest.BodyPublishers.ofString("{}", StandardCharsets.UTF_8))
+                .build();
+
+        // Act
+        HttpResponse<String> response = this.client.send(req, HttpResponse.BodyHandlers.ofString());
+
+        // Assert
+        assertEquals(400, response.statusCode());
+        assertEquals("", response.body());
+    }
+
+    @Test
+    void mcpRejectsRequestWithoutMcpProtocolVersionHeader() throws Exception {
+        // Arrange
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(mcpUri)
+                .header("Content-Type", "application/json")
+                .header("Accept", "application/json, text/event-stream")
+                .POST(HttpRequest.BodyPublishers.ofString("{}", StandardCharsets.UTF_8))
+                .build();
+
+        // Act
+        HttpResponse<String> response = this.client.send(req, HttpResponse.BodyHandlers.ofString());
+
+        // Assert
+        assertEquals(400, response.statusCode());
+        assertEquals("", response.body());
+    }
+
+    @Test
+    void mcpReturnsOkForInversedAcceptHeader() throws Exception {
+        // Arrange
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(mcpUri)
+                .header("Content-Type", "application/json")
+                .header("Accept", "text/event-stream,application/json")
+                .header("MCP-Protocol-Version", "2026-07-28")
+                .POST(HttpRequest.BodyPublishers.ofString("{}"))
+                .build();
+
+        // Act
+        HttpResponse<String> response = this.client.send(req, HttpResponse.BodyHandlers.ofString());
+
+        // Assert
+        assertEquals(501, response.statusCode());
+        assertEquals("", response.body());
+    }
+
+    @Test
+    void mcpRejectsIncompleteAcceptHeader() throws Exception {
+        // Arrange
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(mcpUri)
+                .header("Content-Type", "application/json")
+                .header("Accept", "application/json")
+                .header("MCP-Protocol-Version", "2026-07-28")
+                .POST(HttpRequest.BodyPublishers.ofString("{}", StandardCharsets.UTF_8))
+                .build();
+
+        // Act
+        HttpResponse<String> response = this.client.send(req, HttpResponse.BodyHandlers.ofString());
+
+        // Assert
+        assertEquals(406, response.statusCode());
+        assertEquals("", response.body());
+    }
+
+    @Test
+    void mcpRejectsRequestWithoutAcceptHeader() throws Exception {
+        // Arrange
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(mcpUri)
+                .header("Content-Type", "application/json")
+                .header("MCP-Protocol-Version", "2026-07-28")
+                .POST(HttpRequest.BodyPublishers.ofString("{}", StandardCharsets.UTF_8))
+                .build();
+
+        // Act
+        HttpResponse<String> response = this.client.send(req, HttpResponse.BodyHandlers.ofString());
+
+        // Assert
+        assertEquals(406, response.statusCode());
+        assertEquals("", response.body());
+    }
+
+    @Test
+    void mcpRejectsBlankBody() throws Exception {
+        // Arrange
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(mcpUri)
+                .header("Content-Type", "application/json")
+                .header("Accept", "application/json, text/event-stream")
+                .header("MCP-Protocol-Version", "2026-07-28")
+                .POST(HttpRequest.BodyPublishers.ofString("    \n", StandardCharsets.UTF_8))
+                .build();
+
+        // Act
+        HttpResponse<String> response = this.client.send(req, HttpResponse.BodyHandlers.ofString());
+
+        // Assert
+        assertEquals(400, response.statusCode());
+        assertEquals("", response.body());
+    }
+
+    @Test
+    void mcpRejectsIncompleteBody() throws Exception {
+        // Arrange
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(mcpUri)
+                .header("Content-Type", "application/json")
+                .header("Accept", "application/json, text/event-stream")
+                .header("MCP-Protocol-Version", "2026-07-28")
+                .POST(HttpRequest.BodyPublishers.ofString("{}", StandardCharsets.UTF_8))
+                .build();
+
+        // Act
+        HttpResponse<String> response = this.client.send(req, HttpResponse.BodyHandlers.ofString());
+
+        // Assert
+        assertEquals(501, response.statusCode());
+        assertEquals("", response.body());
+    }
+
+    @Test
+    void mcpRejectsRequestWithoutContentType() throws Exception {
+        // Arrange
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(mcpUri)
+                .header("Accept", "application/json, text/event-stream")
+                .header("MCP-Protocol-Version", "2026-07-28")
+                .POST(HttpRequest.BodyPublishers.ofString("{}", StandardCharsets.UTF_8))
+                .build();
+
+        // Act
+        HttpResponse<String> response = this.client.send(req, HttpResponse.BodyHandlers.ofString());
+
+        // Assert
+        assertEquals(415, response.statusCode());
+        assertEquals("", response.body());
+    }
+
+    @Test
+    void mcpRejectsInvalidContentType() throws Exception {
+        // Arrange
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(mcpUri)
+                .header("Content-Type", "application/xml")
+                .header("Accept", "application/json, text/event-stream")
+                .header("MCP-Protocol-Version", "2026-07-28")
+                .POST(HttpRequest.BodyPublishers.ofString("{}"))
+                .build();
+
+        // Act
+        HttpResponse<String> response = this.client.send(req, HttpResponse.BodyHandlers.ofString());
+
+        //Assert
+        assertEquals(415, response.statusCode());
+        assertEquals("", response.body());
+    }
+
+    @Test
     void mcpRejectsEmptyBody() throws Exception {
         // Arrange
         HttpRequest req = HttpRequest.newBuilder()
                 .uri(mcpUri)
+                .header("Content-Type", "application/json")
+                .header("Accept", "application/json, text/event-stream")
+                .header("MCP-Protocol-Version", "2026-07-28")
                 .POST(HttpRequest.BodyPublishers.noBody())
                 .build();
 
