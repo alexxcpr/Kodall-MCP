@@ -71,4 +71,21 @@ public class OneMcpHttpServerTest {
         assertEquals("GET", response.headers().firstValue("Allow").orElseThrow());
         assertEquals("", response.body());
     }
+
+    @Test
+    void healthRejectInexistentRoute() throws Exception {
+        // Arrange
+        URI customUri = URI.create(this.healthUri + "/inexistent-route");
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(customUri)
+                .GET()
+                .build();
+
+        // Act
+        HttpResponse<String> response = this.client.send(req, HttpResponse.BodyHandlers.ofString());
+
+        // Assert
+        assertEquals(404, response.statusCode());
+        assertEquals("", response.body());
+    }
 }

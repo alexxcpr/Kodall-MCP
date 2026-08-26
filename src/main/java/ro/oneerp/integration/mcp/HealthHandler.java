@@ -10,6 +10,14 @@ import java.nio.charset.StandardCharsets;
 class HealthHandler implements HttpHandler {
     @Override
     public void handle(HttpExchange t) throws IOException {
+        //verify exact route
+        if (!t.getRequestURI().getPath().equals("/health")){
+            t.sendResponseHeaders(404, -1);
+            t.close();
+            return;
+        }
+
+        //only allow GET method
         String reqMethod = t.getRequestMethod();
         if (!reqMethod.equals("GET")){
             t.getResponseHeaders().set("Allow", "GET");
@@ -18,6 +26,7 @@ class HealthHandler implements HttpHandler {
             return;
         }
 
+        //Output & Response
         t.getResponseHeaders().set("Content-Type", "text/plain; charset=utf-8");
 
         String response = "OK";

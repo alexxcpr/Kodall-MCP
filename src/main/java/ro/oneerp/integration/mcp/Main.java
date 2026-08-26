@@ -16,7 +16,6 @@ public class Main {
 
         System.out.println(portOneMcp);
 
-        //trebuie creat serverul, trimis portul ca parametru
         var mcpServer = new OneMcpHttpServer("127.0.0.1", portOneMcp);
         mcpServer.start();
     }
