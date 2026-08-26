@@ -13,6 +13,7 @@ public class OneMcpHttpServer {
 
         HttpServer server = HttpServer.create(socketAddress, 0);
         server.createContext("/health", new HealthHandler());
+        server.createContext("/mcp", new McpHandler());
         server.setExecutor(null);
 
         this.server = server;

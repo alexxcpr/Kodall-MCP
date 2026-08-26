@@ -15,14 +15,18 @@ public class OneMcpHttpServerTest {
     private OneMcpHttpServer mcpServer;
     private HttpClient client;
     private URI healthUri;
+    private URI mcpUri;
 
     @BeforeEach
     void setUp() throws Exception {
         // Arrange
-        this.mcpServer = new OneMcpHttpServer("127.0.0.1", 0);
+        String ipAddress = "127.0.0.1";
+        this.mcpServer = new OneMcpHttpServer(ipAddress, 0);
         this.mcpServer.start();
 
-        this.healthUri = URI.create("http://127.0.0.1:" + this.mcpServer.getMcpServerPort() + "/health");
+        String protocol = "http://";
+        this.healthUri = URI.create(protocol + ipAddress + ":" + this.mcpServer.getMcpServerPort() + "/health");
+        this.mcpUri = URI.create(protocol + ipAddress + ":" + this.mcpServer.getMcpServerPort() + "/mcp");
 
         this.client = HttpClient.newHttpClient();
     }
@@ -31,6 +35,44 @@ public class OneMcpHttpServerTest {
     void tearDown() {
         this.client.close();
         this.mcpServer.stop(0);
+    }
+
+    @Test
+    void mcpRejectsGet() throws Exception {
+        // Arrange
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(this.mcpUri)
+                .GET()
+                .build();
+
+        // Act
+        HttpResponse<String> response = this.client.send(req, HttpResponse.BodyHandlers.ofString());
+
+        // Assert
+        assertEquals(405, response.statusCode());
+        assertEquals("", response.body());
+        assertEquals(
+                "POST",
+                response.headers()
+                        .firstValue("Allow")
+                        .orElseThrow()
+        );
+    }
+
+    @Test
+    void mcpRejectsEmptyBody() throws Exception {
+        // Arrange
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(mcpUri)
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .build();
+
+        // Act
+        HttpResponse<String> response = this.client.send(req, HttpResponse.BodyHandlers.ofString());
+
+        // Assert
+        assertEquals(400, response.statusCode());
+        assertEquals("", response.body());
     }
 
     @Test
